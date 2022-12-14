@@ -13,6 +13,7 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.forgespi.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,12 +38,16 @@ public class EnchSort
         if (Environment.get().getDist().isClient())
         {
             MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGH, EnchSort::onItemDesc);
-            MinecraftForge.EVENT_BUS.addListener(
-                    (PlayerEvent.PlayerLoggedInEvent event) ->
-                    {
-                        EnchSortConfig.parseConfig();
-                        EnchSortConfig.EnchComparator.InitComparator();
-                    });
+            FMLJavaModLoadingContext
+                    .get()
+                    .getModEventBus()
+                    .addListener(EventPriority.LOW,
+                                 (ModConfig.ModConfigEvent event) ->
+                                 {
+                                     EnchSortConfig.parseConfig();
+                                     EnchSortConfig.EnchComparator.InitComparator();
+                                 }
+                    );
         }
     }
 
