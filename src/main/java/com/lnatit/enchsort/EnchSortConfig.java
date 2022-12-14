@@ -1,14 +1,9 @@
 package com.lnatit.enchsort;
 
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.Registry;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.text.*;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 import java.util.*;
@@ -139,14 +134,14 @@ public class EnchSortConfig
         {
             fElement = fElement.toUpperCase();
 
-            ChatFormatting format = ChatFormatting.getByName(fElement);
+            TextFormatting format = TextFormatting.getByName(fElement);
             if (format != null)
             {
                 style = style.applyFormat(format);
                 continue;
             }
 
-            TextColor color = TextColor.parseColor(fElement);
+            Color color = Color.parseColor(fElement);
             if (color != null)
             {
                 style = style.withColor(color);
@@ -180,33 +175,32 @@ public class EnchSortConfig
         }
     }
 
-    public static Component getFullEnchLine(Map.Entry<Enchantment, Integer> entry)
+    public static ITextComponent getFullEnchLine(Map.Entry<Enchantment, Integer> entry)
     {
         Enchantment enchantment = entry.getKey();
         int level = entry.getValue();
-        MutableComponent mutablecomponent = Component.translatable(enchantment.getDescriptionId());
+        TranslationTextComponent component = new TranslationTextComponent(enchantment.getDescriptionId());
 
         if (enchantment.isCurse())
-            mutablecomponent.withStyle(ChatFormatting.RED);
+            component.withStyle(TextFormatting.RED);
         else if (HIGHLIGHT_TREASURE.get() && enchantment.isTreasureOnly())
-            mutablecomponent.withStyle(TREASURE);
+            component.withStyle(TREASURE);
         else
-            mutablecomponent.withStyle(ChatFormatting.GRAY);
+            component.withStyle(TextFormatting.GRAY);
 
         if (level != 1 || enchantment.getMaxLevel() != 1)
         {
-            mutablecomponent.append(" ").append(Component.translatable("enchantment.level." + level));
+            component.append(" ").append(new TranslationTextComponent("enchantment.level." + level));
             if (SHOW_MAX_LEVEL.get())
             {
-                Component maxLvl = Component
-                        .literal("/")
-                        .append(Component.translatable("enchantment.level." + enchantment.getMaxLevel()))
+                ITextComponent maxLvl = new StringTextComponent("/")
+                        .append(new TranslationTextComponent("enchantment.level." + enchantment.getMaxLevel()))
                         .setStyle(MAX_LEVEL);
-                mutablecomponent.append(maxLvl);
+                component.append(maxLvl);
             }
         }
 
-        return mutablecomponent;
+        return component;
     }
 
     static class EnchComparator implements Comparator<Map.Entry<Enchantment, Integer>>
@@ -219,7 +213,7 @@ public class EnchSortConfig
         {
         }
 
-        public static Comparator<Map.Entry<Enchantment, Integer>> getInstance()
+        public static Comparator<? super Map.Entry<Enchantment, Integer>> getInstance()
         {
             if (ASCENDING_SORT.get())
                 return instance;
@@ -228,7 +222,7 @@ public class EnchSortConfig
 
         public static void InitComparator()
         {
-            enchCount = Registry.ENCHANTMENT.size();
+            enchCount = Registry.ENCHANTMENT.entrySet().size();
             if (enchCount == 0)
                 LOGGER.warn("Enchantments...  Where are the enchantments???!");
 
@@ -243,8 +237,8 @@ public class EnchSortConfig
         public int compare(Map.Entry<Enchantment, Integer> o1, Map.Entry<Enchantment, Integer> o2)
         {
             int r1 = 0, r2 = 0, ret;
-            ResourceLocation e1 = EnchantmentHelper.getEnchantmentId(o1.getKey());
-            ResourceLocation e2 = EnchantmentHelper.getEnchantmentId(o2.getKey());
+            ResourceLocation e1 = Registry.ENCHANTMENT.getKey(o1.getKey());
+            ResourceLocation e2 = Registry.ENCHANTMENT.getKey(o2.getKey());
 
             if (e1 == null)
                 LOGGER.error("Failed to get enchantment: " + o1.getKey().getDescriptionId() + "!!!");

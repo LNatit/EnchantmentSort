@@ -1,13 +1,11 @@
 package com.lnatit.enchsort;
 
-import com.mojang.logging.LogUtils;
-import net.minecraft.core.Registry;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.world.item.EnchantedBookItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentHelper;
+import net.minecraft.item.EnchantedBookItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -16,9 +14,13 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.forgespi.Environment;
-import org.slf4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Mod(EnchSort.MOD_ID)
 public class EnchSort
@@ -26,7 +28,7 @@ public class EnchSort
     public static final String MOD_ID = "enchsort";
     public static final String MOD_NAME = "Enchantment Sort";
 
-    public static final Logger LOGGER = LogUtils.getLogger();
+    public static final Logger LOGGER = LogManager.getLogger();
 
     public EnchSort()
     {
@@ -55,21 +57,21 @@ public class EnchSort
 
         int index;
         // Since it's hard to sort Component directly, sort the enchMap instead
-        final List<Component> toolTip = event.getToolTip();
+        final List<ITextComponent> toolTip = event.getToolTip();
         Map<Enchantment, Integer> enchMap = EnchantmentHelper.getEnchantments(stack);
         final Set<Enchantment> enchs = enchMap.keySet();
 
         // find index & clear Enchantment Components
         for (index = 0; index < toolTip.size(); index++)
         {
-            Component line = toolTip.get(index);
+            ITextComponent line = toolTip.get(index);
 
-            if (line.getContents() instanceof TranslatableContents contents)
+            if (line instanceof TranslationTextComponent)
             {
                 boolean flag = false;
 
                 for (Enchantment ench : enchs)
-                    if (contents.getKey().equals(ench.getDescriptionId()))
+                    if (((TranslationTextComponent) line).getKey().equals(ench.getDescriptionId()))
                     {
                         flag = true;
                         break;
