@@ -1,9 +1,8 @@
 package com.lnatit.enchsort;
 
 import com.mojang.logging.LogUtils;
-import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -18,7 +17,10 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.forgespi.Environment;
 import org.slf4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Mod(EnchSort.MOD_ID)
 public class EnchSort
@@ -64,12 +66,12 @@ public class EnchSort
         {
             Component line = toolTip.get(index);
 
-            if (line.getContents() instanceof TranslatableContents contents)
+            if (line instanceof TranslatableComponent component)
             {
                 boolean flag = false;
 
                 for (Enchantment ench : enchs)
-                    if (contents.getKey().equals(ench.getDescriptionId()))
+                    if (component.getKey().equals(ench.getDescriptionId()))
                     {
                         flag = true;
                         break;

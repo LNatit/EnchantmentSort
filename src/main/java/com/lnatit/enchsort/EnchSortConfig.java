@@ -2,10 +2,7 @@ package com.lnatit.enchsort;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
+import net.minecraft.network.chat.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
@@ -184,7 +181,7 @@ public class EnchSortConfig
     {
         Enchantment enchantment = entry.getKey();
         int level = entry.getValue();
-        MutableComponent mutablecomponent = Component.translatable(enchantment.getDescriptionId());
+        MutableComponent mutablecomponent = new TranslatableComponent(enchantment.getDescriptionId());
 
         if (enchantment.isCurse())
             mutablecomponent.withStyle(ChatFormatting.RED);
@@ -195,12 +192,11 @@ public class EnchSortConfig
 
         if (level != 1 || enchantment.getMaxLevel() != 1)
         {
-            mutablecomponent.append(" ").append(Component.translatable("enchantment.level." + level));
+            mutablecomponent.append(" ").append(new TranslatableComponent("enchantment.level." + level));
             if (SHOW_MAX_LEVEL.get())
             {
-                Component maxLvl = Component
-                        .literal("/")
-                        .append(Component.translatable("enchantment.level." + enchantment.getMaxLevel()))
+                Component maxLvl = new TextComponent("/")
+                        .append(new TranslatableComponent("enchantment.level." + enchantment.getMaxLevel()))
                         .setStyle(MAX_LEVEL);
                 mutablecomponent.append(maxLvl);
             }
