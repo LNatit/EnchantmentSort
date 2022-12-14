@@ -9,11 +9,12 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.forgespi.Environment;
 import org.slf4j.Logger;
 
@@ -37,12 +38,16 @@ public class EnchSort
         if (Environment.get().getDist().isClient())
         {
             MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGH, EnchSort::onItemDesc);
-            MinecraftForge.EVENT_BUS.addListener(
-                    (PlayerEvent.PlayerLoggedInEvent event) ->
-                    {
-                        EnchSortConfig.parseConfig();
-                        EnchSortConfig.EnchComparator.InitComparator();
-                    });
+            FMLJavaModLoadingContext
+                    .get()
+                    .getModEventBus()
+                    .addListener(EventPriority.LOW,
+                                 (ModConfigEvent event) ->
+                                 {
+                                     EnchSortConfig.parseConfig();
+                                     EnchSortConfig.EnchComparator.InitComparator();
+                                 }
+                    );
         }
     }
 
