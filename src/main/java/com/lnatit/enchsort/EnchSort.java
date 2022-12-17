@@ -57,7 +57,7 @@ public class EnchSort
         final ItemStack stack = event.getItemStack();
 
         boolean forSort = stack.isEnchanted() || (EnchSortConfig.ALSO_SORT_BOOK.get() && stack.getItem() instanceof EnchantedBookItem);
-        forSort = forSort || (getHideFlags(stack) & ItemStack.TooltipDisplayFlags.ENCHANTMENTS.getMask()) == 0;
+        forSort = forSort && (getHideFlags(stack) & ItemStack.TooltipDisplayFlags.ENCHANTMENTS.getMask()) == 0;
         if (!forSort || event.getEntity() == null)
             return;
 
