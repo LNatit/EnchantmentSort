@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -228,12 +229,12 @@ public class EnchSortConfig
 
         public static void InitComparator()
         {
-            enchCount = Registry.ENCHANTMENT.size();
+            enchCount = ForgeRegistries.ENCHANTMENTS.getKeys().size();
             if (enchCount == 0)
                 LOGGER.warn("Enchantments...  Where are the enchantments???!");
 
             maxEnchLvl = 1;
-            for (Enchantment ench : Registry.ENCHANTMENT)
+            for (Enchantment ench : ForgeRegistries.ENCHANTMENTS)
                 if (ench.getMaxLevel() > maxEnchLvl)
                     maxEnchLvl = ench.getMaxLevel();
             LOGGER.info("Max enchantment level is " + maxEnchLvl + ".");
