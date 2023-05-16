@@ -1,6 +1,5 @@
 package com.lnatit.enchsort;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.item.EnchantedBookItem;
@@ -16,7 +15,9 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.forgespi.Environment;
-import org.slf4j.Logger;
+import net.minecraftforge.registries.IdMappingEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,7 @@ public class EnchSort
     public static final String MOD_ID = "enchsort";
     public static final String MOD_NAME = "Enchantment Sort";
 
-    public static final Logger LOGGER = LogUtils.getLogger();
+    public static final Logger LOGGER = LogManager.getLogger();
 
     public EnchSort()
     {
@@ -41,13 +42,11 @@ public class EnchSort
             FMLJavaModLoadingContext
                     .get()
                     .getModEventBus()
-                    .addListener(EventPriority.LOW,
-                                 (ModConfigEvent event) ->
-                                 {
-                                     EnchSortConfig.parseConfig();
-                                     EnchSortConfig.EnchComparator.InitComparator();
-                                 }
-                    );
+                    .addListener(EventPriority.LOW, (ModConfigEvent event) -> EnchSortConfig.parseConfig());
+            FMLJavaModLoadingContext
+                    .get()
+                    .getModEventBus()
+                    .addListener(EventPriority.LOW, (IdMappingEvent event) -> EnchSortRule.initRule());
         }
     }
 
