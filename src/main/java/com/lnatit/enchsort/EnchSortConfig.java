@@ -1,7 +1,6 @@
 package com.lnatit.enchsort;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -16,12 +15,14 @@ import java.util.*;
 
 import static com.lnatit.enchsort.EnchSort.LOGGER;
 import static com.lnatit.enchsort.EnchSort.MOD_NAME;
+import static com.lnatit.enchsort.EnchSortRule.DEFAULT_PROP;
+import static com.lnatit.enchsort.EnchSortRule.ENCH_RANK;
 
+//TODO add sneak display
 public class EnchSortConfig
 {
     public static ForgeConfigSpec CLIENT_CONFIG;
     public static ForgeConfigSpec.BooleanValue SORT_BY_LEVEL;
-    public static ForgeConfigSpec.ConfigValue<List<String>> SORT_SEQUENCE;
     public static ForgeConfigSpec.BooleanValue INDEPENDENT_TREASURE;
     public static ForgeConfigSpec.BooleanValue REVERSE_TREASURE;
     public static ForgeConfigSpec.BooleanValue ALSO_SORT_BOOK;
@@ -31,16 +32,11 @@ public class EnchSortConfig
     public static ForgeConfigSpec.BooleanValue HIGHLIGHT_TREASURE;
     public static ForgeConfigSpec.ConfigValue<List<String>> TREASURE_FORMAT;
 
-    public static final List<String> DEFAULT_SEQUENCE = new ArrayList<>();
     public static final List<String> DEFAULT_FORMAT = new ArrayList<>();
-    public static final HashMap<String, Integer> ENCH_RANK = new HashMap<>();
     public static Style MAX_LEVEL, TREASURE;
 
     static
     {
-        DEFAULT_SEQUENCE.add("minecraft:unbreaking");
-        DEFAULT_SEQUENCE.add("minecraft:mending");
-
         DEFAULT_FORMAT.add("DARK_GRAY");
         MAX_LEVEL = Style.EMPTY;
         TREASURE = Style.EMPTY;
@@ -55,13 +51,6 @@ public class EnchSortConfig
                          " default: true"
                 )
                 .define("sotByLevel", true);
-
-        // DONE
-        SORT_SEQUENCE = BUILDER
-                .comment(" Sequence of enchantments when sorting",
-                         " modid:enchantment"
-                )
-                .define("sortSequence", DEFAULT_SEQUENCE);
 
         // DONE
         INDEPENDENT_TREASURE = BUILDER
@@ -162,22 +151,11 @@ public class EnchSortConfig
 
     public static void parseConfig()
     {
-        int size, index;
-        List<String> sequence = SORT_SEQUENCE.get();
-        size = sequence.size();
-
-        for (index = 0; index < size; index++)
-            ENCH_RANK.put(sequence.get(index), size - index);
-
-        if (ENCH_RANK.size() == index)
-            LOGGER.info("Parsed " + index + " enchantments successful!");
-        else LOGGER.warn("Parse count dismatch!!! There are " + (index - ENCH_RANK.size()) + " repeats.");
-
         if (SHOW_MAX_LEVEL.get() || HIGHLIGHT_TREASURE.get())
         {
             MAX_LEVEL = parseFormatList(MAX_LEVEL_FORMAT.get());
             TREASURE = parseFormatList(TREASURE_FORMAT.get());
-            LOGGER.info("Special format parsed successful!");
+            LOGGER.info("Special format parsed successfully!");
         }
     }
 
@@ -227,7 +205,7 @@ public class EnchSortConfig
             else return instance.reversed();
         }
 
-        public static void InitComparator()
+        public static void initComparator()
         {
             enchCount = ForgeRegistries.ENCHANTMENTS.getKeys().size();
             if (enchCount == 0)
@@ -235,8 +213,17 @@ public class EnchSortConfig
 
             maxEnchLvl = 1;
             for (Enchantment ench : ForgeRegistries.ENCHANTMENTS)
-                if (ench.getMaxLevel() > maxEnchLvl)
-                    maxEnchLvl = ench.getMaxLevel();
+            {
+                ResourceLocation rl = EnchantmentHelper.getEnchantmentId(ench);
+                if (rl == null)
+                {
+                    LOGGER.error("Failed to get enchantment: " + ench.getDescriptionId() + "!!!");
+                    continue;
+                }
+                int maxLevel = Math.max(ench.getMaxLevel(), ENCH_RANK.get(rl.toString()).getMaxLevel());
+                if (maxLevel > maxEnchLvl)
+                    maxEnchLvl = maxLevel;
+            }
             LOGGER.info("Max enchantment level is " + maxEnchLvl + ".");
         }
 
@@ -249,10 +236,10 @@ public class EnchSortConfig
 
             if (e1 == null)
                 LOGGER.error("Failed to get enchantment: " + o1.getKey().getDescriptionId() + "!!!");
-            else r1 = ENCH_RANK.getOrDefault(e1.toString(), 0);
+            else r1 = ENCH_RANK.getOrDefault(e1.toString(), DEFAULT_PROP).getSequence();
             if (e2 == null)
                 LOGGER.error("Failed to get enchantment: " + o2.getKey().getDescriptionId() + "!!!");
-            else r2 = ENCH_RANK.getOrDefault(e2.toString(), 0);
+            else r2 = ENCH_RANK.getOrDefault(e2.toString(), DEFAULT_PROP).getSequence();
 
             ret = r1 - r2;
 
