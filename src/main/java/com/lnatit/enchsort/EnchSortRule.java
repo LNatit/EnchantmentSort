@@ -17,13 +17,13 @@ import static com.lnatit.enchsort.EnchSort.MOD_ID;
 
 public class EnchSortRule
 {
-    public static File RULE_FILE;
-    public static Toml RULE_TOML;
+    private static File RULE_FILE;
+    private static Toml RULE_TOML;
 
-    public static final String FILE_NAME = MOD_ID + "-rule.toml";
-    public static final String LIST_KEY = "entries";
-    public static final EnchProporty DEFAULT_PROP = new EnchProporty();
-    public static final HashMap<String, EnchProporty> ENCH_RANK = new HashMap<>();
+    private static final String FILE_NAME = MOD_ID + "-rule.toml";
+    private static final String LIST_KEY = "entries";
+    private static final EnchProperty DEFAULT_PROP = new EnchProperty();
+    private static final HashMap<String, EnchProperty> ENCH_RANK = new HashMap<>();
 
     public static void initRule()
     {
@@ -31,8 +31,18 @@ public class EnchSortRule
 
         try
         {
-            if (RULE_FILE.exists() || RULE_FILE.createNewFile())
+            try
+            {
+                if (!RULE_FILE.exists() || RULE_FILE.createNewFile())
+                    writeDefault();
+
+                RULE_TOML = new Toml().read(RULE_FILE);
+            }
+            catch (RuntimeException e)
+            {
+                LOGGER.warn(FILE_NAME + " contains invalid toml, try regenerating...");
                 writeDefault();
+            }
         }
         catch (IOException e)
         {
@@ -40,10 +50,8 @@ public class EnchSortRule
             LOGGER.error(e.getStackTrace());
         }
 
-        RULE_TOML = new Toml().read(RULE_FILE);
-
         parseRule();
-        EnchSortConfig.EnchComparator.initComparator();
+        EnchComparator.initComparator();
     }
 
     public static void parseRule()
@@ -55,7 +63,7 @@ public class EnchSortRule
         for (index = 0; index < size; index++)
         {
             Toml entry = tomlList.get(index);
-            EnchProporty prop = entry.to(EnchProporty.class);
+            EnchProperty prop = entry.to(EnchProperty.class);
             prop.sequence = size - index;
             ENCH_RANK.put(prop.name, prop);
         }
@@ -83,8 +91,8 @@ public class EnchSortRule
                 LOGGER.error("Failed to get enchantment: " + ench.getDescriptionId() + "!!!");
                 continue;
             }
-            elem.put(EnchProporty.NAME, rl.toString());
-            elem.put(EnchProporty.MAX_LVL, ench.getMaxLevel());
+            elem.put(EnchProperty.NAME, rl.toString());
+            elem.put(EnchProperty.MAX_LVL, ench.getMaxLevel());
 
             entry.add(elem);
         }
@@ -95,16 +103,21 @@ public class EnchSortRule
         writer.write(default_sequence, RULE_FILE);
     }
 
-    protected static class EnchProporty
+    public static EnchProperty getPropById(String id)
     {
-        private String name;
+        return ENCH_RANK.getOrDefault(id, DEFAULT_PROP);
+    }
+
+    protected static class EnchProperty
+    {
+        private final String name;
         private int sequence;
-        private int max_lvl;
+        private final int max_lvl;
 
         public static final String NAME = "name";
         public static final String MAX_LVL = "max_lvl";
 
-        private EnchProporty()
+        private EnchProperty()
         {
             name = "null";
             sequence = 0;
@@ -119,6 +132,80 @@ public class EnchSortRule
         public int getMaxLevel()
         {
             return max_lvl;
+        }
+    }
+
+    static class EnchComparator implements Comparator<Map.Entry<Enchantment, Integer>>
+    {
+        private static int maxEnchLvl;
+        private static int enchCount;
+        private static final EnchComparator INSTANCE = new EnchComparator();
+
+        private EnchComparator()
+        {
+        }
+
+        public static Comparator<Map.Entry<Enchantment, Integer>> getInstance()
+        {
+            if (EnchSortConfig.ASCENDING_SORT.get())
+                return INSTANCE;
+            else return INSTANCE.reversed();
+        }
+
+        public static void initComparator()
+        {
+            enchCount = ForgeRegistries.ENCHANTMENTS.getKeys().size();
+            if (enchCount == 0)
+                LOGGER.warn("Enchantments...  Where are the enchantments???!");
+
+            maxEnchLvl = 1;
+            for (Enchantment ench : ForgeRegistries.ENCHANTMENTS)
+            {
+                ResourceLocation rl = EnchantmentHelper.getEnchantmentId(ench);
+                if (rl == null)
+                {
+                    LOGGER.error("Failed to get enchantment: " + ench.getDescriptionId() + "!!!");
+                    continue;
+                }
+                int maxLevel = Math.max(ench.getMaxLevel(), getPropById(rl.toString()).getMaxLevel());
+                if (maxLevel > maxEnchLvl)
+                    maxEnchLvl = maxLevel;
+            }
+            LOGGER.info("Max enchantment level is " + maxEnchLvl + ".");
+        }
+
+        @Override
+        public int compare(Map.Entry<Enchantment, Integer> o1, Map.Entry<Enchantment, Integer> o2)
+        {
+            int r1 = 0, r2 = 0, ret;
+            ResourceLocation e1 = EnchantmentHelper.getEnchantmentId(o1.getKey());
+            ResourceLocation e2 = EnchantmentHelper.getEnchantmentId(o2.getKey());
+
+            if (e1 == null)
+                LOGGER.error("Failed to get enchantment: " + o1.getKey().getDescriptionId() + "!!!");
+            else r1 = getPropById(e1.toString()).getSequence();
+            if (e2 == null)
+                LOGGER.error("Failed to get enchantment: " + o2.getKey().getDescriptionId() + "!!!");
+            else r2 = getPropById(e2.toString()).getSequence();
+
+            ret = r1 - r2;
+
+            if (EnchSortConfig.SORT_BY_LEVEL.get())
+                ret += (o1.getValue() - o2.getValue()) * enchCount;
+
+            if (EnchSortConfig.INDEPENDENT_TREASURE.get())
+            {
+                int treasureModify = maxEnchLvl * enchCount;
+                if (EnchSortConfig.REVERSE_TREASURE.get())
+                    treasureModify = -treasureModify;
+
+                if (o1.getKey().isTreasureOnly())
+                    ret -= treasureModify;
+                if (o2.getKey().isTreasureOnly())
+                    ret += treasureModify;
+            }
+
+            return ret;
         }
     }
 }
