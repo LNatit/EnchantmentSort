@@ -2,7 +2,10 @@ package com.lnatit.enchsort;
 
 import com.moandjiezana.toml.Toml;
 import com.moandjiezana.toml.TomlWriter;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -70,7 +73,104 @@ public class EnchSortRule
 
         if (ENCH_RANK.size() == index)
             LOGGER.info("Parsed " + index + " enchantments successful!");
-        else LOGGER.warn("Parse count dismatch!!! There are " + (index - ENCH_RANK.size()) + " repeats.");
+        else LOGGER.warn("Parse count mismatch!!! There are " + (index - ENCH_RANK.size()) + " repeats.");
+    }
+
+    public static void sortDefault(List<Component> toolTip, ItemStack stack)
+    {
+        int index;
+        // Since it's hard to sort Component directly, sort the enchMap instead
+        Map<Enchantment, Integer> enchMap = EnchantmentHelper.getEnchantments(stack);
+        Set<Enchantment> enchs = enchMap.keySet();
+
+        // find index & clear Enchantment Components
+        for (index = 1; index < toolTip.size(); index++)
+        {
+            Component line = toolTip.get(index);
+
+            if (line.getContents() instanceof TranslatableContents contents)
+            {
+                boolean flag = false;
+
+                for (Enchantment ench : enchs)
+                    if (contents.getKey().equals(ench.getDescriptionId()))
+                    {
+                        flag = true;
+                        break;
+                    }
+
+                if (flag)
+                    break;
+            }
+        }
+        if (index + enchs.size() > toolTip.size())
+        {
+            LOGGER.warn("Some tooltip lines are missing, please try to enable {compatibleMode} in config!");
+            return;
+        }
+        toolTip.subList(index, index + enchs.size()).clear();
+
+        // Sort the enchMap & generate toolTip
+        ArrayList<Map.Entry<Enchantment, Integer>> enchArray = new ArrayList<>(enchMap.entrySet());
+
+        enchArray.sort(EnchSortRule.EnchComparator.getInstance());
+        for (Map.Entry<Enchantment, Integer> entry : enchArray)
+            toolTip.add(index++, EnchSortConfig.getFullEnchLine(entry));
+    }
+
+    public static void sortCompatible(List<Component> toolTip, ItemStack stack)
+    {
+        int index;
+
+        // Sort the enchMap first
+        Map<Enchantment, Integer> enchMap = EnchantmentHelper.getEnchantments(stack);
+        Set<Map.Entry<Enchantment, Integer>> enchs = enchMap.entrySet();
+        ArrayList<Map.Entry<Enchantment, Integer>> enchArray = new ArrayList<>(enchs);
+
+        enchArray.sort(EnchSortRule.EnchComparator.getInstance());
+
+        // Get the according line index & component
+        // In case some misc info was added before, store the upcoming one line if needed
+        ArrayList<Integer> lineIndex = new ArrayList<>();
+        Map<Map.Entry<Enchantment, Integer>, Component> lineComponent = new LinkedHashMap<>();
+
+        for (index = 1; index < toolTip.size(); index++)
+        {
+            Component line = toolTip.get(index);
+
+            if (line.getContents() instanceof TranslatableContents contents)
+            {
+                for (Map.Entry<Enchantment, Integer> ench : enchs)
+                {
+                    if (contents.getKey().equals(ench.getKey().getDescriptionId()))
+                    {
+                        lineIndex.add(index);
+                        lineComponent.put(ench, line);
+                    }
+                }
+            }
+            else
+            {
+                for (Component elem : line.getSiblings())
+                {
+                    if (elem.getContents() instanceof TranslatableContents scontents)
+                    {
+                        for (Map.Entry<Enchantment, Integer> sench : enchs)
+                        {
+                            if (scontents.getKey().equals(sench.getKey().getDescriptionId()))
+                            {
+                                lineIndex.add(index);
+                                lineComponent.put(sench, line);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Insert tooltips back
+        for (index = 0; index < lineIndex.size(); index++)
+            toolTip.set(lineIndex.get(index), lineComponent.get(enchArray.get(index)));
     }
 
     private static void writeDefault() throws IOException

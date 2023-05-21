@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.lnatit.enchsort.EnchSortConfig.COMPATIBLE_MODE;
 import static com.lnatit.enchsort.EnchSortConfig.SNEAK_DISPLAY;
 
 @Mod(EnchSort.MOD_ID)
@@ -59,7 +60,7 @@ public class EnchSort
 
     private static void onItemDesc(ItemTooltipEvent event)
     {
-        final ItemStack stack = event.getItemStack();
+        ItemStack stack = event.getItemStack();
 
         boolean noEntity = event.getEntity() == null;
         boolean sneakDisp = !noEntity && SNEAK_DISPLAY.get() && Screen.hasShiftDown();
@@ -69,45 +70,11 @@ public class EnchSort
         if (noEntity || sneakDisp || noEnchs || tagBan)
             return;
 
-        int index;
-        // Since it's hard to sort Component directly, sort the enchMap instead
-        final List<Component> toolTip = event.getToolTip();
-        Map<Enchantment, Integer> enchMap = EnchantmentHelper.getEnchantments(stack);
-        final Set<Enchantment> enchs = enchMap.keySet();
+        List<Component> toolTip = event.getToolTip();
 
-        // find index & clear Enchantment Components
-        for (index = 0; index < toolTip.size(); index++)
-        {
-            Component line = toolTip.get(index);
-
-            if (line.getContents() instanceof TranslatableContents contents)
-            {
-                boolean flag = false;
-
-                for (Enchantment ench : enchs)
-                    if (contents.getKey().equals(ench.getDescriptionId()))
-                    {
-                        flag = true;
-                        break;
-                    }
-
-                if (flag)
-                    break;
-            }
-        }
-        if (index + enchs.size() > toolTip.size())
-        {
-            LOGGER.warn("Some tooltip lines are missing!!!");
-            return;
-        }
-        toolTip.subList(index, index + enchs.size()).clear();
-
-        // Sort the enchMap & generate toolTip
-        ArrayList<Map.Entry<Enchantment, Integer>> enchArray = new ArrayList<>(enchMap.entrySet());
-
-        enchArray.sort(EnchSortRule.EnchComparator.getInstance());
-        for (Map.Entry<Enchantment, Integer> entry : enchArray)
-            toolTip.add(index++, EnchSortConfig.getFullEnchLine(entry));
+        if (COMPATIBLE_MODE.get())
+            EnchSortRule.sortCompatible(toolTip, stack);
+        else EnchSortRule.sortDefault(toolTip, stack);
     }
 
     private static void onEnchRegister(RegisterEvent event)

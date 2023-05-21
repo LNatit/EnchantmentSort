@@ -16,7 +16,6 @@ import static com.lnatit.enchsort.EnchSort.LOGGER;
 import static com.lnatit.enchsort.EnchSort.MOD_NAME;
 import static net.minecraft.ChatFormatting.*;
 
-//TODO introduce tooltip line remapping (more robust)
 public class EnchSortConfig
 {
     public static ForgeConfigSpec CLIENT_CONFIG;
@@ -27,6 +26,7 @@ public class EnchSortConfig
     public static ForgeConfigSpec.BooleanValue ASCENDING_SORT;
     public static ForgeConfigSpec.BooleanValue SNEAK_DISPLAY;
     public static ForgeConfigSpec.BooleanValue SHOW_MAX_LEVEL;
+    public static ForgeConfigSpec.BooleanValue COMPATIBLE_MODE;
     public static ForgeConfigSpec.ConfigValue<List<String>> MAX_LEVEL_FORMAT;
     public static ForgeConfigSpec.BooleanValue HIGHLIGHT_TREASURE;
     public static ForgeConfigSpec.ConfigValue<List<String>> TREASURE_FORMAT;
@@ -96,6 +96,14 @@ public class EnchSortConfig
                          " default: false"
                 )
                 .define("showMaxLevel", false);
+
+        //Added in 1.1.5
+        COMPATIBLE_MODE = BUILDER
+                .comment(" Compatible mode (may cause performance losses)",
+                         " Enable this config will invalidate {showMaxLevel} & {highlightTreasure}",
+                         " default: false"
+                )
+                .define("compatibleMode", false);
 
         // DONE
         BUILDER.push("ShowMaxLevel");
