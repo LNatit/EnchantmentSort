@@ -1,14 +1,13 @@
 package com.lnatit.enchsort;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.world.item.EnchantedBookItem;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -17,12 +16,15 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.forgespi.Environment;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.IForgeRegistry;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+
+import static com.lnatit.enchsort.EnchSortConfig.COMPATIBLE_MODE;
+import static com.lnatit.enchsort.EnchSortConfig.SNEAK_DISPLAY;
 
 @Mod(EnchSort.MOD_ID)
 public class EnchSort
@@ -39,71 +41,47 @@ public class EnchSort
         if (Environment.get().getDist().isClient())
         {
             MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGH, EnchSort::onItemDesc);
+
             FMLJavaModLoadingContext
                     .get()
                     .getModEventBus()
-                    .addListener(EventPriority.LOW,
-                                 (ModConfigEvent event) ->
-                                 {
-                                     EnchSortConfig.parseConfig();
-                                     EnchSortConfig.EnchComparator.InitComparator();
-                                 }
-                    );
+                    .addListener(EventPriority.LOW, (ModConfigEvent event) -> EnchSortConfig.parseConfig());
+
+            FMLJavaModLoadingContext
+                    .get()
+                    .getModEventBus()
+                    .addGenericListener(Enchantment.class, EventPriority.LOWEST, EnchSort::onEnchRegister);
         }
     }
-
 
     private static void onItemDesc(ItemTooltipEvent event)
     {
-        final ItemStack stack = event.getItemStack();
+        ItemStack stack = event.getItemStack();
 
-        boolean forSort = stack.isEnchanted() || (EnchSortConfig.ALSO_SORT_BOOK.get() && stack.getItem() instanceof EnchantedBookItem);
-        forSort = forSort && (getHideFlags(stack) & ItemStack.TooltipPart.ENCHANTMENTS.getMask()) == 0;
-        if (!forSort || event.getEntity() == null)
+        boolean noEntity = event.getEntity() == null;
+        boolean sneakDisp = !noEntity && SNEAK_DISPLAY.get() && Screen.hasShiftDown();
+        boolean noEnchs = !(stack.isEnchanted() || EnchSortConfig.ALSO_SORT_BOOK.get() && stack.getItem() instanceof EnchantedBookItem);
+        boolean tagBan = (getHideFlags(stack) & ItemStack.TooltipPart.ENCHANTMENTS.getMask()) != 0;
+
+        if (noEntity || sneakDisp || noEnchs || tagBan)
             return;
 
-        int index;
-        // Since it's hard to sort Component directly, sort the enchMap instead
-        final List<Component> toolTip = event.getToolTip();
-        Map<Enchantment, Integer> enchMap = EnchantmentHelper.getEnchantments(stack);
-        final Set<Enchantment> enchs = enchMap.keySet();
+        List<Component> toolTip = event.getToolTip();
 
-        // find index & clear Enchantment Components
-        for (index = 0; index < toolTip.size(); index++)
-        {
-            Component line = toolTip.get(index);
-
-            if (line instanceof TranslatableComponent component)
-            {
-                boolean flag = false;
-
-                for (Enchantment ench : enchs)
-                    if (component.getKey().equals(ench.getDescriptionId()))
-                    {
-                        flag = true;
-                        break;
-                    }
-
-                if (flag)
-                    break;
-            }
-        }
-        if (index + enchs.size() > toolTip.size())
-        {
-            LOGGER.warn("Some tooltip lines are missing! Ench sort cancelled!");
-            return;
-        }
-        toolTip.subList(index, index + enchs.size()).clear();
-
-        // Sort the enchMap & generate toolTip
-        ArrayList<Map.Entry<Enchantment, Integer>> enchArray = new ArrayList<>(enchMap.entrySet());
-
-        enchArray.sort(EnchSortConfig.EnchComparator.getInstance());
-        for (Map.Entry<Enchantment, Integer> entry : enchArray)
-            toolTip.add(index++, EnchSortConfig.getFullEnchLine(entry));
+        if (COMPATIBLE_MODE.get())
+            EnchSortRule.sortCompatible(toolTip, stack);
+        else EnchSortRule.sortDefault(toolTip, stack);
     }
 
-    private static int getHideFlags(ItemStack stack) {
+    private static void onEnchRegister(RegistryEvent.Register<Enchantment> event)
+    {
+        if (event.getRegistry() == ForgeRegistries.ENCHANTMENTS)
+            EnchSortRule.initRule();
+    }
+
+    @SuppressWarnings("all")
+    private static int getHideFlags(ItemStack stack)
+    {
         return stack.hasTag() && stack.getTag().contains("HideFlags", 99) ? stack.getTag().getInt("HideFlags") : stack.getItem().getDefaultTooltipHideFlags(stack);
     }
 }
