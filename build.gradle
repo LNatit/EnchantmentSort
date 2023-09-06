@@ -166,9 +166,6 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-    implementation fg.deobf("curse.maven:quark-243121:4706592")
-    implementation fg.deobf("curse.maven:autoreglib-250363:4100299")
-
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
     // Toml Config Parse
