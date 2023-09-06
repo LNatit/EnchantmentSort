@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.lnatit.enchsort.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "plugin": "com.lnatit.enchsort.mixin.ApplyMixinPlugin",
+  "refmap": "enchsort.refmap.json",
+  "mixins": [],
+  "client": [
+    "quark.MixinEnchantedBookTooltips"
+  ]
+}
