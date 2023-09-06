@@ -37,7 +37,7 @@ public abstract class MixinEnchantedBookTooltips {
     @SuppressWarnings("unchecked")
     @Inject(method = "makeTooltip", at = @At("HEAD"), cancellable = true)
     private static void makeTooltip(final RenderTooltipEvent.GatherComponents event, final CallbackInfo callback) throws InvocationTargetException, IllegalAccessException, InstantiationException {
-        if (!EnchSortConfig.ENABLE_QUARK_COMPATIBILITY.get()) {
+        if (!EnchSortConfig.ALSO_SORT_BOOK.get() || !EnchSortConfig.ENABLE_QUARK_COMPATIBILITY.get()) {
             return;
         }
 
