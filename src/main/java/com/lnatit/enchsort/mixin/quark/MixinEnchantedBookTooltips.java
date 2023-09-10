@@ -57,7 +57,7 @@ public abstract class MixinEnchantedBookTooltips {
             List<Either<FormattedText, TooltipComponent>> tooltip = event.getTooltipElements();
 
             for (EnchantmentInstance enchantmentInstance : (List<EnchantmentInstance>) enchantmentSort$getEnchantedBookEnchantments.invoke(null, stack)) {
-                int tooltipIndex = 0; // Need to start at the beginning already since the order of enchantments returned by this method above is different from the sort
+                int tooltipIndex = 0; // Need to start at the beginning again since the order of enchantments returned by the method above could be different from the sort
 
                 while (tooltipIndex < tooltip.size()) {
                     Either<FormattedText, TooltipComponent> elementAt = tooltip.get(tooltipIndex);
