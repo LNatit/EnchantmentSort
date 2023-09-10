@@ -30,6 +30,7 @@ public class EnchSortConfig
     public static ForgeConfigSpec.ConfigValue<List<String>> MAX_LEVEL_FORMAT;
     public static ForgeConfigSpec.BooleanValue HIGHLIGHT_TREASURE;
     public static ForgeConfigSpec.ConfigValue<List<String>> TREASURE_FORMAT;
+    public static ForgeConfigSpec.BooleanValue ENABLE_QUARK_COMPATIBILITY;
 
     public static final List<String> DEFAULT_FORMAT = new ArrayList<>();
     public static Style MAX_LEVEL, TREASURE;
@@ -104,6 +105,12 @@ public class EnchSortConfig
                          " default: false"
                 )
                 .define("compatibleMode", false);
+
+        ENABLE_QUARK_COMPATIBILITY = BUILDER
+                .comment(" Enable this if you encounter issues with missing item icons of the Quark enchanted book tooltips",
+                         " default: true"
+                )
+                .define("enable_quark_compatibility", true);
 
         // DONE
         BUILDER.push("ShowMaxLevel");
