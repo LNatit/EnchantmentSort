@@ -1,35 +1,21 @@
 package com.lnatit.enchsort;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.logging.LogUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.world.item.EnchantedBookItem;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.ItemTooltipEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.forgespi.Environment;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.IForgeRegistry;
 import net.minecraftforge.registries.RegisterEvent;
 import org.slf4j.Logger;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static com.lnatit.enchsort.EnchSortConfig.COMPATIBLE_MODE;
-import static com.lnatit.enchsort.EnchSortConfig.SNEAK_DISPLAY;
 
 @Mod(EnchSort.MOD_ID)
 public class EnchSort
@@ -39,18 +25,30 @@ public class EnchSort
 
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    // TODO WIP
+    public static final KeyMapping HIDE_KEY =
+            new KeyMapping("key.enchsort.hide",
+                           KeyConflictContext.IN_GAME,
+                           InputConstants.Type.KEYSYM.getOrCreate(InputConstants.KEY_LSHIFT),
+                           "key.categories.enchsort"
+            );
+    public static final KeyMapping CONFIG_KEY =
+            new KeyMapping("key.enchsort.config",
+                           KeyConflictContext.IN_GAME,
+                           InputConstants.Type.KEYSYM.getOrCreate(InputConstants.KEY_HOME),
+                           "key.categories.enchsort"
+            );
+
     public EnchSort()
     {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, EnchSortConfig.CLIENT_CONFIG);
 
         if (Environment.get().getDist().isClient())
         {
-            MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGH, EnchSort::onItemDesc);
-
             FMLJavaModLoadingContext
                     .get()
                     .getModEventBus()
-                    .addListener(EventPriority.LOW, (ModConfigEvent event) -> EnchSortConfig.parseConfig());
+                    .addListener(EnchSort::onKeyRegister);
 
             FMLJavaModLoadingContext
                     .get()
@@ -59,23 +57,10 @@ public class EnchSort
         }
     }
 
-    private static void onItemDesc(ItemTooltipEvent event)
+    private static void onKeyRegister(RegisterKeyMappingsEvent event)
     {
-        ItemStack stack = event.getItemStack();
-
-        boolean noEntity = event.getEntity() == null;
-        boolean sneakDisp = !noEntity && SNEAK_DISPLAY.get() && Screen.hasShiftDown();
-        boolean noEnchs = !(stack.isEnchanted() || EnchSortConfig.ALSO_SORT_BOOK.get() && stack.getItem() instanceof EnchantedBookItem);
-        boolean tagBan = (getHideFlags(stack) & ItemStack.TooltipPart.ENCHANTMENTS.getMask()) != 0;
-
-        if (noEntity || sneakDisp || noEnchs || tagBan)
-            return;
-
-        List<Component> toolTip = event.getToolTip();
-
-        if (COMPATIBLE_MODE.get())
-            EnchSortRule.sortCompatible(toolTip, stack);
-        else EnchSortRule.sortDefault(toolTip, stack);
+        event.register(HIDE_KEY);
+        event.register(CONFIG_KEY);
     }
 
     private static void onEnchRegister(RegisterEvent event)
@@ -87,6 +72,7 @@ public class EnchSort
     @SuppressWarnings("all")
     private static int getHideFlags(ItemStack stack)
     {
-        return stack.hasTag() && stack.getTag().contains("HideFlags", 99) ? stack.getTag().getInt("HideFlags") : stack.getItem().getDefaultTooltipHideFlags(stack);
+        return stack.hasTag() && stack.getTag().contains("HideFlags", 99) ? stack.getTag().getInt(
+                "HideFlags") : stack.getItem().getDefaultTooltipHideFlags(stack);
     }
 }

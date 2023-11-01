@@ -2,11 +2,9 @@ package com.lnatit.enchsort;
 
 import com.moandjiezana.toml.Toml;
 import com.moandjiezana.toml.TomlWriter;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -15,12 +13,12 @@ import net.minecraftforge.registries.ForgeRegistries;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.lnatit.enchsort.ApotheosisSupport.getMaxLevel;
+import static com.lnatit.enchsort.ApotheosisSupport.isTreasure;
 import static com.lnatit.enchsort.EnchSort.LOGGER;
 import static com.lnatit.enchsort.EnchSort.MOD_ID;
-import static net.minecraft.ChatFormatting.GRAY;
-import static net.minecraft.ChatFormatting.RED;
-import static com.lnatit.enchsort.ApotheosisSupport.*;
 
 public class EnchSortRule
 {
@@ -80,103 +78,6 @@ public class EnchSortRule
         else LOGGER.warn("Parse count mismatch!!! There are " + (index - ENCH_RANK.size()) + " repeats.");
     }
 
-    public static void sortDefault(List<Component> toolTip, ItemStack stack)
-    {
-        int index;
-        // Since it's hard to sort Component directly, sort the enchMap instead
-        Map<Enchantment, Integer> enchMap = EnchantmentHelper.getEnchantments(stack);
-        Set<Enchantment> enchs = enchMap.keySet();
-
-        // find index & clear Enchantment Components
-        for (index = 1; index < toolTip.size(); index++)
-        {
-            Component line = toolTip.get(index);
-
-            if (line.getContents() instanceof TranslatableContents contents)
-            {
-                boolean flag = false;
-
-                for (Enchantment ench : enchs)
-                    if (contents.getKey().equals(ench.getDescriptionId()))
-                    {
-                        flag = true;
-                        break;
-                    }
-
-                if (flag)
-                    break;
-            }
-        }
-        if (index + enchs.size() > toolTip.size())
-        {
-            LOGGER.warn("Some tooltip lines are missing, please try to enable {compatibleMode} in config!");
-            return;
-        }
-        toolTip.subList(index, index + enchs.size()).clear();
-
-        // Sort the enchMap & generate toolTip
-        ArrayList<Map.Entry<Enchantment, Integer>> enchArray = new ArrayList<>(enchMap.entrySet());
-
-        enchArray.sort(EnchSortRule.EnchComparator.getInstance());
-        for (Map.Entry<Enchantment, Integer> entry : enchArray)
-            toolTip.add(index++, getFullEnchLine(entry));
-    }
-
-    public static void sortCompatible(List<Component> toolTip, ItemStack stack)
-    {
-        int index;
-
-        // Sort the enchMap first
-        Map<Enchantment, Integer> enchMap = EnchantmentHelper.getEnchantments(stack);
-        Set<Map.Entry<Enchantment, Integer>> enchs = enchMap.entrySet();
-        ArrayList<Map.Entry<Enchantment, Integer>> enchArray = new ArrayList<>(enchs);
-
-        enchArray.sort(EnchSortRule.EnchComparator.getInstance());
-
-        // Get the according line index & component
-        // In case some misc info was added before, store the upcoming one line if needed
-        ArrayList<Integer> lineIndex = new ArrayList<>();
-        Map<Map.Entry<Enchantment, Integer>, Component> lineComponent = new LinkedHashMap<>();
-
-        for (index = 1; index < toolTip.size(); index++)
-        {
-            Component line = toolTip.get(index);
-
-            if (line.getContents() instanceof TranslatableContents contents)
-            {
-                for (Map.Entry<Enchantment, Integer> ench : enchs)
-                {
-                    if (contents.getKey().equals(ench.getKey().getDescriptionId()))
-                    {
-                        lineIndex.add(index);
-                        lineComponent.put(ench, line);
-                    }
-                }
-            }
-            else
-            {
-                for (Component elem : line.getSiblings())
-                {
-                    if (elem.getContents() instanceof TranslatableContents scontents)
-                    {
-                        for (Map.Entry<Enchantment, Integer> sench : enchs)
-                        {
-                            if (scontents.getKey().equals(sench.getKey().getDescriptionId()))
-                            {
-                                lineIndex.add(index);
-                                lineComponent.put(sench, line);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Insert tooltips back
-        for (index = 0; index < lineIndex.size(); index++)
-            toolTip.set(lineIndex.get(index), lineComponent.get(enchArray.get(index)));
-    }
-
     private static void writeDefault() throws IOException
     {
         TomlWriter writer = new TomlWriter.Builder()
@@ -212,45 +113,6 @@ public class EnchSortRule
         return ENCH_RANK.getOrDefault(id, DEFAULT_PROP);
     }
 
-    public static Component getFullEnchLine(Map.Entry<Enchantment, Integer> entry)
-    {
-        Enchantment enchantment = entry.getKey();
-        int level = entry.getValue();
-        MutableComponent mutablecomponent = Component.translatable(enchantment.getDescriptionId());
-
-        if (enchantment.isCurse())
-            mutablecomponent.withStyle(RED);
-        else if (EnchSortConfig.HIGHLIGHT_TREASURE.get() && isTreasure(enchantment))
-            mutablecomponent.withStyle(EnchSortConfig.TREASURE);
-        else
-            mutablecomponent.withStyle(GRAY);
-
-        ResourceLocation rl = EnchantmentHelper.getEnchantmentId(enchantment);
-        if (rl == null)
-        {
-            LOGGER.error("Failed to get enchantment: " + enchantment.getDescriptionId() + "!!!");
-            return mutablecomponent;
-        }
-        int maxLevel = Math.max(getMaxLevel(enchantment), getPropById(rl.toString()).getMaxLevel());
-
-        if (level != 1 || maxLevel != 1)
-        {
-            mutablecomponent.append(" ").append(Component.translatable("enchantment.level." + level));
-            if (EnchSortConfig.SHOW_MAX_LEVEL.get())
-            {
-                Component maxLvl = Component
-                        .literal("/")
-                        .append(Component.translatable("enchantment.level." + maxLevel))
-                        .setStyle(EnchSortConfig.MAX_LEVEL);
-                mutablecomponent.append(maxLvl);
-            }
-        }
-
-        return mutablecomponent;
-    }
-
-
-
     protected static class EnchProperty
     {
         private final String name;
@@ -278,7 +140,7 @@ public class EnchSortRule
         }
     }
 
-    static class EnchComparator implements Comparator<Map.Entry<Enchantment, Integer>>
+    public static class EnchComparator implements Comparator<Tag>
     {
         private static int maxEnchLvl;
         private static int enchCount;
@@ -288,7 +150,7 @@ public class EnchSortRule
         {
         }
 
-        public static Comparator<Map.Entry<Enchantment, Integer>> getInstance()
+        public static Comparator<Tag> getInstance()
         {
             if (EnchSortConfig.ASCENDING_SORT.get())
                 return INSTANCE;
@@ -318,23 +180,29 @@ public class EnchSortRule
         }
 
         @Override
-        public int compare(Map.Entry<Enchantment, Integer> o1, Map.Entry<Enchantment, Integer> o2)
+        public int compare(Tag o1, Tag o2)
         {
-            int r1 = 0, r2 = 0, ret;
-            ResourceLocation e1 = EnchantmentHelper.getEnchantmentId(o1.getKey());
-            ResourceLocation e2 = EnchantmentHelper.getEnchantmentId(o2.getKey());
+            if (!(o1 instanceof CompoundTag && o2 instanceof CompoundTag))
+                return 0;
+
+            int r1 = 0;
+            int r2 = 0;
+            AtomicInteger ret = new AtomicInteger();
+            ResourceLocation e1 = EnchantmentHelper.getEnchantmentId((CompoundTag) o1);
+            ResourceLocation e2 = EnchantmentHelper.getEnchantmentId((CompoundTag) o2);
 
             if (e1 == null)
-                LOGGER.error("Failed to get enchantment: " + o1.getKey().getDescriptionId() + "!!!");
+                LOGGER.error("Failed to get enchantment: " + ((CompoundTag) o1).getString("id") + "!!!");
             else r1 = getPropById(e1.toString()).getSequence();
             if (e2 == null)
-                LOGGER.error("Failed to get enchantment: " + o2.getKey().getDescriptionId() + "!!!");
+                LOGGER.error("Failed to get enchantment: " + ((CompoundTag) o2).getString("id") + "!!!");
             else r2 = getPropById(e2.toString()).getSequence();
 
-            ret = r1 - r2;
+            ret.set(r1 - r2);
 
             if (EnchSortConfig.SORT_BY_LEVEL.get())
-                ret += (o1.getValue() - o2.getValue()) * enchCount;
+                ret.addAndGet((EnchantmentHelper.getEnchantmentLevel(
+                        (CompoundTag) o1) - EnchantmentHelper.getEnchantmentLevel((CompoundTag) o2)) * enchCount);
 
             if (EnchSortConfig.INDEPENDENT_TREASURE.get())
             {
@@ -342,13 +210,20 @@ public class EnchSortRule
                 if (EnchSortConfig.REVERSE_TREASURE.get())
                     treasureModify = -treasureModify;
 
-                if (isTreasure(o1.getKey()))
-                    ret -= treasureModify;
-                if (isTreasure(o2.getKey()))
-                    ret += treasureModify;
+
+                int finalTreasureModify = treasureModify;
+                ForgeRegistries.ENCHANTMENTS.getDelegate(e1).ifPresent((ench) -> ret.addAndGet(
+                        -(isTreasure(ench.get()) ? finalTreasureModify : 0)));
+                ForgeRegistries.ENCHANTMENTS.getDelegate(e2).ifPresent((ench) -> ret.addAndGet(
+                        (isTreasure(ench.get()) ? finalTreasureModify : 0)));
+
+//                if (isTreasure(o1.getKey()))
+//                    ret.addAndGet(-treasureModify);
+//                if (isTreasure(o2.getKey()))
+//                    ret.addAndGet(treasureModify);
             }
 
-            return ret;
+            return ret.get();
         }
     }
 }
