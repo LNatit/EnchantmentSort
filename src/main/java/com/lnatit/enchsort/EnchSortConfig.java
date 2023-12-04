@@ -50,7 +50,7 @@ public class EnchSortConfig
                 .comment(" Whether sort the enchantments by its level",
                          " default: true"
                 )
-                .define("sotByLevel", true);
+                .define("sortByLevel", true);
 
         // DONE
         INDEPENDENT_TREASURE = BUILDER
